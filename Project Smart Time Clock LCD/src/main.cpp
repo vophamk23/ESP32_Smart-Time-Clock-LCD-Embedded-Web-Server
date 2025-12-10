@@ -49,6 +49,8 @@ void setup()
 
   SCH_Add_Task(Task_CheckAlarm, 0, TASK_ALARM_CHECK_TICKS);
 
+  SCH_Add_Task(Task_HandleLEDBlink, 0, TASK_LED_INDICATOR_TICKS);
+
   SCH_Add_Task(Task_ReadSensors, 0, TASK_SENSOR_READ_TICKS);
 }
 

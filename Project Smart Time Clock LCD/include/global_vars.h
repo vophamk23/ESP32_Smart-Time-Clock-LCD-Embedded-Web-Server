@@ -35,4 +35,7 @@ extern int alarmMinute;     // Phút báo thức
 extern bool alarmTriggered; // Báo thức đã kích hoạt?
 extern bool alarmEditHour;  // Đang chỉnh giờ hay phút?
 
+// ==================== BIẾN ĐIỀU KHIỂN LED ====================
+extern unsigned long lastLEDToggle; // Thời điểm toggle LED lần cuối
+extern bool ledState;               // Trạng thái hiện tại của LED (HIGH/LOW)
 #endif // GLOBAL_VARS_H

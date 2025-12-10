@@ -76,6 +76,29 @@ void Task_CheckAlarm(void)
         }
     }
 }
+
+/* ==================== TASK 6: LED BLINK HANDLER ==================== */
+void Task_HandleLEDBlink()
+{
+    // Chỉ nhấp nháy khi báo thức hoặc countdown được kích hoạt
+    if (alarmTriggered || countdownTriggered)
+    {
+        // Kiểm tra đã đủ thời gian để toggle LED chưa
+        if (millis() - lastLEDToggle >= TASK_LED_INDICATOR_DELAY_MS)
+        {
+            lastLEDToggle = millis();                     // Cập nhật thời điểm toggle
+            ledState = !ledState;                         // Đảo trạng thái LED
+            digitalWrite(LED_PIN, ledState ? HIGH : LOW); // Cập nhật LED
+        }
+    }
+    else
+    {
+        // Khi không có báo động, đảm bảo LED tắt
+        digitalWrite(LED_PIN, LOW);
+        ledState = false;
+    }
+}
+
 /* ==================== TASK 5: SENSOR READER ==================== */
 // Đọc nhiệt độ & độ ẩm từ DHT11 mỗi 2 giây
 void Task_ReadSensors(void)

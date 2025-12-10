@@ -19,6 +19,10 @@ void initButtons()
     // Cấu hình chân buzzer ở chế độ OUTPUT
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW); // Tắt buzzer khi khởi động
+
+    // ========== LED ==========
+    pinMode(LED_PIN, OUTPUT);   // Cấu hình chân LED là OUTPUT
+    digitalWrite(LED_PIN, LOW); // Tắt LED khi khởi động
 }
 
 // ============================================================================
@@ -113,6 +117,7 @@ void handleSetButton()
         if (alarmTriggered)
         {
             digitalWrite(BUZZER_PIN, LOW);  // Tắt buzzer
+            digitalWrite(LED_PIN, LOW);     // Tắt LED báo hiệu
             alarmTriggered = false;         // Tắt cờ báo thức
             alarmEditHour = !alarmEditHour; // Đổi lại trạng thái chỉnh sửa
             Serial.println("Alarm stopped");
@@ -172,9 +177,10 @@ void handleSetButton()
         if (countdownTriggered)
         {
             digitalWrite(BUZZER_PIN, LOW); // Tắt buzzer
-            countdownTriggered = false;    // Tắt cờ hết giờ
-            countdownEditing = true;       // Quay lại chế độ chỉnh sửa
-            isCountdownRunning = false;    // Dừng countdown
+            digitalWrite(LED_PIN, LOW);
+            countdownTriggered = false; // Tắt cờ hết giờ
+            countdownEditing = true;    // Quay lại chế độ chỉnh sửa
+            isCountdownRunning = false; // Dừng countdown
 
             // Khôi phục giá trị ban đầu
             c_hours = c_hours_initial;
@@ -288,6 +294,7 @@ void handleIncButton()
             isCountdownRunning = false;    // Dừng countdown
             countdownTriggered = false;    // Tắt cảnh báo
             digitalWrite(BUZZER_PIN, LOW); // Tắt buzzer
+            digitalWrite(LED_PIN, LOW);    // Tắt LED báo hiệu
 
             // Reset về chế độ chỉnh sửa và xóa hết giá trị
             countdownEditing = true;

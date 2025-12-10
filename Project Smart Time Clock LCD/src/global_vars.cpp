@@ -31,3 +31,7 @@ int alarmHour = 10;          // Giờ của báo thức (mặc định 5h)
 int alarmMinute = 30;        // Phút của báo thức (mặc định 21 phút)
 bool alarmTriggered = false; // Cờ báo đã kích hoạt báo thức (true: đang báo)
 bool alarmEditHour = true;   // Trường đang chỉnh sửa (true: chỉnh giờ, false: chỉnh phút)
+
+// ==================== KHỞI TẠO BIẾN LED ====================
+unsigned long lastLEDToggle = 0; // Thời điểm toggle LED lần cuối
+bool ledState = false;           // Trạng thái LED (false = LOW/tắt)

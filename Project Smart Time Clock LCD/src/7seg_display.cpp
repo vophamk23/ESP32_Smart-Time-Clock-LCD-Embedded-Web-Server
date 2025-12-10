@@ -163,7 +163,8 @@ void displayAlarm(RTC_DS3231 *rtc, LedControl *lc)
     {
         alarmTriggered = true;
         Serial.println("Alarm triggered!");
-        digitalWrite(BUZZER_PIN, HIGH);
+        digitalWrite(BUZZER_PIN, HIGH); // Bật buzzer khi báo thức
+        digitalWrite(LED_PIN, HIGH); // Bật LED báo hiệu
     }
 
     lc->setDigit(0, 7, now.hour() / 10, false);
@@ -249,7 +250,8 @@ void displayCountdown(LedControl *lc)
             countdownRemaining = 0;
             isCountdownRunning = false;
             countdownTriggered = true;
-            digitalWrite(BUZZER_PIN, HIGH);
+            digitalWrite(BUZZER_PIN, HIGH); // Bật buzzer khi hết giờ
+            digitalWrite(LED_PIN, HIGH); // Bật LED báo hiệu
         }
         else
         {
