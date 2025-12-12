@@ -1,5 +1,5 @@
-#ifndef _7SEG_DISPLAY_H_
-#define _7SEG_DISPLAY_H_
+#ifndef _LED_7SEG_DISPLAY_H_
+#define _LED_7SEG_DISPLAY_H_
 
 // #include <LedControl.h>
 // #include <DHT.h>
@@ -24,4 +24,4 @@ void displayCountdown(LedControl *lc);
 void displayLapValue(LedControl *lc, unsigned long t);
 void showSavedLaps(LedControl *lc);
 
-#endif // _7SEG_DISPLAY_H_
+#endif // _LED_7SEG_DISPLAY_H_

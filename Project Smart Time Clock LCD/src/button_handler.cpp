@@ -1,7 +1,7 @@
 #include "button_handler.h"
 #include "config.h"
 #include "global_vars.h"
-#include "7seg_display.h"
+#include "led_7seg_display.h"
 #include "lcd_display.h"
 
 // ============================================================================
