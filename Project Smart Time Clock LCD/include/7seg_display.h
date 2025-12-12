@@ -5,9 +5,9 @@
 // #include <DHT.h>
 // #include <RTClib.h>
 
-#include "LedControl.h" // ✓ Đổi thành dấu ""
-#include "DHT.h"        // ✓ Đổi thành dấu ""
-#include "RTClib.h"     // ✓ Đổi thành dấu ""
+#include "LedControl.h"
+#include "DHT.h"
+#include "RTClib.h"
 
 // ==================== KHỞI TẠO DISPLAY ====================
 void initDisplay();

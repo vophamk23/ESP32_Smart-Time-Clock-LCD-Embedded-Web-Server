@@ -6,9 +6,9 @@
 // #include <DHT.h>
 // #include <RTClib.h>
 #include <Wire.h>
-#include "LiquidCrystal_I2C.h" // ✓ Đổi từ <> sang ""
-#include "DHT.h"               // ✓ Đổi từ <> sang ""
-#include "RTClib.h"            // ✓ Đổi từ <> sang ""
+#include "LiquidCrystal_I2C.h"
+#include "DHT.h"
+#include "RTClib.h"
 
 // ============================================================================
 // HÀM KHỞI TẠO VÀ TRẢ VỀ ĐỐI TƯỢNG LCD

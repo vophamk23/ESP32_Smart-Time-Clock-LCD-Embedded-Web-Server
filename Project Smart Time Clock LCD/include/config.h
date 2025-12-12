@@ -5,7 +5,7 @@
 #define DIN_PIN 13      // MAX7219 DIN
 #define CLK_PIN 14      // MAX7219 CLK
 #define CS_PIN 12       // MAX7219 CS
-#define DHT_PIN 27      // DHT11 Data pin
+#define DHT_PIN 27      // DHT12 Data pin
 #define BUZZER_PIN 32   // Chân kết nối buzzer
 #define LED_PIN 33      // LED báo hiệu (GPIO 33)
 #define BTN_MODE_PIN 16 // Nút nhấn chuyển mode
