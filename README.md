@@ -247,10 +247,7 @@ smart-clock-esp32/
 
 ## 👨‍💻 **Tác giả & License**
 
-**MIT License**
+**Author:** *Phạm Công Võ*
 
-**Author:** *[Your Name]*
-
-* GitHub: **@yourusername**
-* Email: [your.email@example.com](mailto:your.email@example.com)
-* LinkedIn: yourprofile
+* GitHub: **@vophamk23**
+* Email: [congvolv1@gmail.com](mailto:your.email@example.com)
