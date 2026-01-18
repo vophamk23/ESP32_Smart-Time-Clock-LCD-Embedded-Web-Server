@@ -8,7 +8,8 @@
 
 <br>
 
-[![Uploading Smart Time Clock.jpg…]()](https://github.com/vophamk23/Project_ESP32_Smart-Time-Clock-LCD/blob/main/Smart%20Time%20Clock.jpg)
+
+![Smart Clock System](Smart%20Time%20Clock.jpg)
 
 
 
