@@ -598,9 +598,6 @@ furnished to do so, subject to the following conditions:
 
 - 📧 Email: [congvolv1@gmail.com](mailto:congvolv1@gmail.com)
 - 🐙 GitHub: [@vophamk23](https://github.com/vophamk23)
-- 💼 LinkedIn: [Your Profile](https://linkedin.com/in/yourprofile)
-- 🌐 Website: [yourwebsite.com](https://yourwebsite.com)
-
 ---
 
 ## 🙏 **Acknowledgments**
