@@ -4,6 +4,9 @@
 
 
 **Multi-functional Smart Clock System with ESP32**
+<br>
+
+![Smart Clock System](Smart%20Time%20Clock.jpg)
 
 *Real-time scheduling · Dual displays · NTP sync · Environmental monitoring*
 
@@ -372,19 +375,42 @@ smart-clock-esp32/
 
 ---
 
-## 👨‍💻 Author
+## 📄 **License**
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+```
+MIT License
+
+Copyright (c) 2024 Phạm Công Võ
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+[Full license text...]
+```
+
+
+## 👨‍💻 **Author & Contact**
 
 **Phạm Công Võ**
-📧 congvolv1@gmail.com
-🐙 [@vophamk23](https://github.com/vophamk23)
 
+- 📧 Email: [congvolv1@gmail.com](mailto:congvolv1@gmail.com)
+- 🐙 GitHub: [@vophamk23](https://github.com/vophamk23)
 ---
 
-## 📄 License
+## 🙏 **Acknowledgments**
 
-MIT License — see [LICENSE](LICENSE) for details.
+- **ESP32 Community** for excellent documentation
+- **Adafruit** for RTClib and DHT libraries
+- **Arduino** for the accessible development platform
+- **Contributors** who helped improve this project
 
-
+---
 
 
 
@@ -402,24 +428,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ### **Multi-functional Smart Clock System with ESP32**
 
-<div align="center">
 
-**A feature-rich embedded system with real-time scheduling, dual displays, and environmental monitoring**
-
-<br>
-
-![Smart Clock System](Smart%20Time%20Clock.jpg)
-
-
-
-
-*ESP32-based smart clock featuring LED 7-segment display, LCD screen, RTC module, and temperature sensor*
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Platform: ESP32](https://img.shields.io/badge/Platform-ESP32-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
-[![Framework: Arduino](https://img.shields.io/badge/Framework-Arduino-teal.svg)](https://www.arduino.cc/)
-
-</div>
 
 ---
 
@@ -973,41 +982,5 @@ Please ensure:
 
 ---
 
-## 📄 **License**
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
-```
-MIT License
-
-Copyright (c) 2024 Phạm Công Võ
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-[Full license text...]
-```
-
----
-
-## 👨‍💻 **Author & Contact**
-
-**Phạm Công Võ**
-
-- 📧 Email: [congvolv1@gmail.com](mailto:congvolv1@gmail.com)
-- 🐙 GitHub: [@vophamk23](https://github.com/vophamk23)
----
-
-## 🙏 **Acknowledgments**
-
-- **ESP32 Community** for excellent documentation
-- **Adafruit** for RTClib and DHT libraries
-- **Arduino** for the accessible development platform
-- **Contributors** who helped improve this project
-
----
 
