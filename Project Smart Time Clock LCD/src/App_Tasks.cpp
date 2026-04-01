@@ -3,6 +3,7 @@
  */
 
 #include "app_tasks.h"
+#include "clock_webserver.h"
 
 /* ==================== TASK 1: BUTTON SCANNING ==================== */
 // Quét 3 nút nhấn (MODE, SET, INC) mỗi 50ms
@@ -207,4 +208,11 @@ void Task_SerialMonitor(void)
                   isCountdownRunning ? "RUN" : "STOP");
     Serial.printf("  Heap : %u bytes\n", ESP.getFreeHeap());
     Serial.println("=================================");
+}
+
+/* ==================== TASK 8: WEBSERVER HANDLER ==================== */
+// Xử lý HTTP request từ trình duyệt — poll mỗi 50ms
+void Task_WebServer_Handler(void)
+{
+    Task_WebServer();
 }

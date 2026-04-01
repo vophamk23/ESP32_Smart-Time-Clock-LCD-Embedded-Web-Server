@@ -14,6 +14,7 @@
 #include "sensor_handler.h"
 #include "App_Tasks.h"
 #include "Preferences.h"
+#include "clock_webserver.h"
 
 /* ==================== SETUP ==================== */
 void setup()
@@ -32,6 +33,8 @@ void setup()
   // WiFi connect → NTP sync → RTC adjust → WiFi OFF
   // Nếu không có WiFi hoặc timeout, RTC giữ giờ cũ — hoạt động bình thường
   initWiFiAndNTP(WIFI_SSID, WIFI_PASS, getRTC());
+
+  initWebServer(); // Bật HTTP server (sau WiFi để lấy IP)
 
   // ========================================================================
   // 2: KHỞI TẠO SCHEDULER
@@ -60,6 +63,8 @@ void setup()
   SCH_Add_Task(Task_ReadSensors, 0, TASK_SENSOR_READ_TICKS);
 
   SCH_Add_Task(Task_SerialMonitor, 0, TASK_SERIAL_MONITOR_TICKS);
+
+  SCH_Add_Task(Task_WebServer_Handler, 0, TASK_WEB_SERVER_TICKS);
 }
 
 /* ==================== MAIN LOOP ==================== */

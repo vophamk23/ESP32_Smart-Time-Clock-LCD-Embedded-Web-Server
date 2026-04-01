@@ -13,6 +13,7 @@
 #include "lcd_display.h"
 #include "button_handler.h"
 #include "sensor_handler.h"
+#include "clock_webserver.h"
 
 /* ==================== TIMING CONSTANTS (MS) ==================== */
 #define TASK_BUTTON_CHECK_DELAY_MS 50
@@ -24,6 +25,7 @@
 #define TASK_DEBUG_INFO_DELAY_MS 5000
 #define TASK_LED_INDICATOR_DELAY_MS 100
 #define TASK_SERIAL_MONITOR_DELAY_MS 5000
+#define TASK_WEB_SERVER_DELAY_MS 50
 
 /* ==================== TIMING IN TICKS ==================== */
 #define TASK_BUTTON_CHECK_TICKS (TASK_BUTTON_CHECK_DELAY_MS / TIMER_TICK_MS)
@@ -35,6 +37,7 @@
 #define TASK_DEBUG_INFO_TICKS (TASK_DEBUG_INFO_DELAY_MS / TIMER_TICK_MS)
 #define TASK_LED_INDICATOR_TICKS (TASK_LED_INDICATOR_DELAY_MS / TIMER_TICK_MS)
 #define TASK_SERIAL_MONITOR_TICKS (TASK_SERIAL_MONITOR_DELAY_MS / TIMER_TICK_MS)
+#define TASK_WEB_SERVER_TICKS (TASK_WEB_SERVER_DELAY_MS / TIMER_TICK_MS) // Gọi liên tục để xử lý request nhanh nhất
 
 /* ==================== TASK FUNCTIONS ==================== */
 void Task_CheckButtons(void);
@@ -46,4 +49,5 @@ void Task_ReadSensors(void);
 void Task_Heartbeat(void);
 void Task_DebugInfo(void);
 void Task_SerialMonitor(void);
+void Task_WebServer_Handler(void);
 #endif // APP_TASKS_H

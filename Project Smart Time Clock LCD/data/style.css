@@ -1,0 +1,558 @@
+/* ============================================================
+   style.css — Smart Clock LCD Retro Theme
+   Font: VT323 (display), Share Tech Mono (body)
+   ============================================================ */
+
+:root {
+  --lcd-bg: #0a1a0a;
+  --lcd-green: #39ff14;
+  --lcd-dim: #1a4d1a;
+  --lcd-bright: #aaff88;
+  --lcd-amber: #ffb700;
+  --lcd-red: #ff3333;
+  --bezel-bg: #1c1c1c;
+  --bezel-edge: #2e2e2e;
+  --panel-bg: #111811;
+  --btn-bg: #222;
+  --btn-border: #444;
+  --btn-active: #39ff14;
+  --btn-active-bg: #0d2b0d;
+  --shadow-green: 0 0 8px #39ff1466, 0 0 24px #39ff1422;
+  --shadow-btn: 0 4px 0 #111, 0 0 8px #0004;
+  --font-lcd: "VT323", monospace;
+  --font-mono: "Share Tech Mono", monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  background: #0f0f0f;
+  background-image: radial-gradient(
+    ellipse at 50% 0%,
+    #0d2b0d55 0%,
+    transparent 60%
+  );
+  color: var(--lcd-green);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 0 40px;
+  overflow-x: hidden;
+}
+
+/* ── HEADER ── */
+header {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid #1e3a1e;
+}
+
+.brand {
+  font-family: var(--font-lcd);
+  font-size: 2rem;
+  letter-spacing: 6px;
+  color: var(--lcd-green);
+  text-shadow: var(--shadow-green);
+}
+
+.sys-info {
+  font-size: 0.7rem;
+  color: var(--lcd-dim);
+  margin-left: 12px;
+  letter-spacing: 1px;
+}
+
+.sensor-inline {
+  font-size: 0.85rem;
+  color: var(--lcd-bright);
+  letter-spacing: 2px;
+}
+
+/* ── MAIN LAYOUT ── */
+main {
+  width: 100%;
+  max-width: 760px;
+  padding: 24px 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── LCD BEZEL ── */
+.lcd-bezel {
+  position: relative;
+  background: var(--bezel-bg);
+  border: 3px solid #333;
+  border-radius: 12px;
+  padding: 18px 18px 22px;
+  box-shadow:
+    inset 0 2px 4px #0006,
+    0 8px 32px #000a,
+    0 0 0 1px #111;
+}
+
+/* Screws */
+.screw {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: radial-gradient(circle at 35% 35%, #555, #222);
+  border-radius: 50%;
+  border: 1px solid #111;
+}
+.screw::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-top: 1.5px solid #777;
+  border-radius: 50%;
+  transform: rotate(45deg);
+}
+.screw.tl {
+  top: 8px;
+  left: 8px;
+}
+.screw.tr {
+  top: 8px;
+  right: 8px;
+}
+.screw.bl {
+  bottom: 8px;
+  left: 8px;
+}
+.screw.br {
+  bottom: 8px;
+  right: 8px;
+}
+
+/* ── LCD SCREEN ── */
+.lcd-screen {
+  position: relative;
+  background: var(--lcd-bg);
+  border: 2px solid #0d2b0d;
+  border-radius: 6px;
+  padding: 28px 24px 24px;
+  min-height: 160px;
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 40px #00000088,
+    inset 0 0 12px #39ff1408,
+    0 0 24px #39ff1422;
+}
+
+/* Scanlines overlay */
+.scanlines {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0, 0, 0, 0.18) 3px,
+    rgba(0, 0, 0, 0.18) 4px
+  );
+  z-index: 10;
+}
+
+/* ── PANEL ── */
+.panel {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: fadeIn 0.15s ease;
+}
+.panel.active {
+  display: flex;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lcd-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 5px;
+  color: var(--lcd-dim);
+  text-transform: uppercase;
+  align-self: flex-start;
+}
+
+.lcd-big {
+  font-family: var(--font-lcd);
+  font-size: 5rem;
+  line-height: 1;
+  color: var(--lcd-green);
+  text-shadow: var(--shadow-green);
+  letter-spacing: 4px;
+  text-align: center;
+  width: 100%;
+}
+
+.lcd-sub {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--lcd-bright);
+  letter-spacing: 3px;
+  text-align: center;
+}
+
+#panel-sensor .lcd-big {
+  font-size: 3.2rem;
+  letter-spacing: 3px;
+}
+
+/* Cursor blink */
+.lcd-cursor {
+  position: absolute;
+  bottom: 10px;
+  right: 14px;
+  width: 10px;
+  height: 2px;
+  background: var(--lcd-green);
+  animation: blink 1s step-end infinite;
+  box-shadow: var(--shadow-green);
+}
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Alarm ringing state */
+.panel.alarm-ring .lcd-big {
+  animation: alarmPulse 0.5s ease-in-out infinite alternate;
+  color: var(--lcd-red);
+  text-shadow:
+    0 0 12px var(--lcd-red),
+    0 0 32px #ff333344;
+}
+@keyframes alarmPulse {
+  from {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Countdown triggered */
+.panel.cd-triggered .lcd-big {
+  color: var(--lcd-amber);
+  text-shadow: 0 0 12px var(--lcd-amber);
+}
+.panel.cd-running .lcd-big {
+  color: #00ffcc;
+  text-shadow: 0 0 10px #00ffcc88;
+}
+
+/* Laps list */
+.laps {
+  width: 100%;
+  max-height: 60px;
+  overflow-y: auto;
+  margin-top: 6px;
+}
+.lap-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--lcd-dim);
+  padding: 1px 4px;
+  border-bottom: 1px solid #122012;
+  letter-spacing: 2px;
+}
+.lap-item:last-child {
+  border-bottom: none;
+}
+
+/* ── CONTROL PANEL ── */
+.control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.btn-label {
+  font-size: 0.6rem;
+  letter-spacing: 5px;
+  color: var(--lcd-dim);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+/* ── MODE BUTTONS ── */
+.mode-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--btn-bg);
+  border: 2px solid var(--btn-border);
+  border-radius: 8px;
+  color: #666;
+  cursor: pointer;
+  padding: 10px 14px;
+  flex: 1;
+  min-width: 80px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: all 0.12s;
+  box-shadow: var(--shadow-btn);
+  position: relative;
+  top: 0;
+  user-select: none;
+}
+.mode-btn:hover {
+  border-color: #555;
+  color: #999;
+  background: #2a2a2a;
+}
+.mode-btn:active {
+  top: 3px;
+  box-shadow: 0 1px 0 #111;
+}
+.mode-btn.active {
+  border-color: var(--btn-active);
+  color: var(--btn-active);
+  background: var(--btn-active-bg);
+  box-shadow:
+    0 4px 0 #0a1e0a,
+    0 0 12px #39ff1433;
+}
+.mode-btn.active .btn-icon {
+  filter: drop-shadow(0 0 4px var(--lcd-green));
+}
+
+.btn-icon {
+  font-size: 1.2rem;
+}
+.btn-text {
+  font-size: 0.58rem;
+}
+
+/* ── ACTION AREA ── */
+.action-area {
+  background: #161616;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 16px 18px;
+  min-height: 72px;
+}
+
+.action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.action-group.hidden {
+  display: none;
+}
+
+.no-action {
+  font-size: 0.7rem;
+  color: #333;
+  letter-spacing: 3px;
+  text-align: center;
+  padding: 10px 0;
+}
+
+/* Input rows */
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.input-row label {
+  font-size: 0.65rem;
+  letter-spacing: 2px;
+  color: var(--lcd-dim);
+}
+.sep {
+  font-family: var(--font-lcd);
+  font-size: 1.4rem;
+  color: var(--lcd-dim);
+  margin: 0 -2px;
+}
+
+input[type="number"] {
+  width: 56px;
+  background: #0d0d0d;
+  border: 1px solid #2e4a2e;
+  border-radius: 4px;
+  color: var(--lcd-green);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 5px 4px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input[type="number"]:focus {
+  border-color: var(--lcd-green);
+  box-shadow: 0 0 6px #39ff1433;
+}
+/* Hide number spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Button rows */
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Action buttons */
+.act-btn {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border: 2px solid;
+  border-radius: 6px;
+  padding: 7px 14px;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.1s;
+  box-shadow: var(--shadow-btn);
+  position: relative;
+  top: 0;
+  user-select: none;
+}
+.act-btn:active {
+  top: 3px;
+  box-shadow: none;
+}
+.act-btn.green {
+  color: var(--lcd-green);
+  border-color: #1e4d1e;
+}
+.act-btn.green:hover {
+  background: #0d2b0d;
+  border-color: var(--lcd-green);
+}
+.act-btn.yellow {
+  color: var(--lcd-amber);
+  border-color: #4d3b00;
+}
+.act-btn.yellow:hover {
+  background: #2b2000;
+  border-color: var(--lcd-amber);
+}
+.act-btn.red {
+  color: var(--lcd-red);
+  border-color: #4d1010;
+}
+.act-btn.red:hover {
+  background: #2b0808;
+  border-color: var(--lcd-red);
+}
+.act-btn.gray {
+  color: #666;
+  border-color: #333;
+}
+.act-btn.gray:hover {
+  background: #1e1e1e;
+  border-color: #555;
+  color: #999;
+}
+.act-btn.wide {
+  width: 100%;
+  text-align: center;
+}
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0a1a0a;
+  border: 1px solid var(--lcd-green);
+  color: var(--lcd-green);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 3px;
+  padding: 9px 22px;
+  border-radius: 4px;
+  box-shadow: 0 0 16px #39ff1433;
+  z-index: 999;
+  animation: fadeIn 0.2s ease;
+  text-transform: uppercase;
+}
+.toast.hidden {
+  display: none;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #111;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e4d1e;
+  border-radius: 2px;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 500px) {
+  .lcd-big {
+    font-size: 3.6rem;
+  }
+  .brand {
+    font-size: 1.4rem;
+  }
+  .mode-btn {
+    padding: 8px 6px;
+    min-width: 56px;
+  }
+  .btn-text {
+    display: none;
+  }
+}

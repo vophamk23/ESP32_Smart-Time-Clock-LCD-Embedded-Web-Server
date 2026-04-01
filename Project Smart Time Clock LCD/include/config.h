@@ -1,6 +1,17 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// ============================================================================
+// WEBSERVER CONFIG
+// ============================================================================
+#define WEB_USE_AP 0 // 0 = STA, 1 = AP, 2 = AP+STA
+#define AP_SSID "SmartClock"
+#define AP_PASS "" // trống = open; >=8 ký tự = có mật khẩu
+#define WEB_PORT 80
+// ==================== WIFI (dùng cho NTP sync) ====================
+#define WIFI_SSID "Tuoi"
+#define WIFI_PASS "25062011@##@"
+
 // ==================== ĐỊNH NGHĨA CHÂN KẾT NỐI ====================
 #define DIN_PIN 13      // MAX7219 DIN
 #define CLK_PIN 14      // MAX7219 CLK
@@ -23,10 +34,6 @@
 #define BUTTON_DEBOUNCE 300 // Thời gian chống dội nút nhấn (ms)
 #define DISPLAY_INTENSITY 8 // Độ sáng LED (0-15)
 #define TOTAL_MODES 5       // Tổng số chế độ hiển thị
-
-// ==================== WIFI (dùng cho NTP sync) ====================
-#define WIFI_SSID "Tuoi"
-#define WIFI_PASS "25062011@##@"
 
 // ==================== ENUM CHẾ ĐỘ HIỂN THỊ ====================
 enum DisplayMode

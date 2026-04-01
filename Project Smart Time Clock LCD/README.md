@@ -4,7 +4,9 @@
 
 **Multi-functional Smart Clock System with ESP32**
 <br>
+<<<<<<< HEAD
 _Real-time scheduling · Dual displays · NTP sync · Environmental monitoring_
+=======
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform: ESP32](https://img.shields.io/badge/Platform-ESP32-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
@@ -23,6 +25,7 @@ _Real-time scheduling · Dual displays · NTP sync · Environmental monitoring_
 - [Hardware](#-hardware)
 - [Pin Configuration](#-pin-configuration)
 - [Installation](#-installation)
+- [Web Dashboard](#-web-dashboard)
 - [Usage Guide](#-usage-guide)
 - [Serial Commands](#-serial-commands)
 - [Display Formats](#-display-formats)
@@ -35,17 +38,21 @@ _Real-time scheduling · Dual displays · NTP sync · Environmental monitoring_
 
 **Smart Clock ESP32** is an embedded system built on the **ESP32 DevKit** platform, implementing a **Cooperative Scheduler** with a 10ms hardware timer tick. The system synchronizes time via **NTP over WiFi** on boot, then stores it in a **DS3231 RTC** module for accurate offline timekeeping.
 
+A built-in **HTTP Web Dashboard** (served from SPIFFS) allows full remote control via any browser — no app required.
+
 ### Key Highlights
 
-| Feature                | Details                                 |
-| ---------------------- | --------------------------------------- |
-| **Microcontroller**    | ESP32 (Dual-core, 240MHz)               |
-| **Scheduler**          | Cooperative, 10ms tick (Hardware Timer) |
-| **Time Source**        | DS3231 RTC + NTP sync (UTC+7)           |
-| **Displays**           | MAX7219 8-digit LED + I2C LCD 16x2      |
-| **Sensor**             | DHT11 (Temperature & Humidity)          |
-| **Persistent Storage** | ESP32 Flash via Preferences API         |
-| **Operating Modes**    | 5 modes via 3 push buttons              |
+| Feature                | Details                                   |
+| ---------------------- | ----------------------------------------- |
+| **Microcontroller**    | ESP32 (Dual-core, 240MHz)                 |
+| **Scheduler**          | Cooperative, 10ms tick (Hardware Timer)   |
+| **Time Source**        | DS3231 RTC + NTP sync (UTC+7)             |
+| **Displays**           | MAX7219 8-digit LED + I2C LCD 16x2        |
+| **Sensor**             | DHT11 (Temperature & Humidity)            |
+| **Persistent Storage** | ESP32 Flash via Preferences API           |
+| **Operating Modes**    | 5 modes via 3 push buttons or Web UI      |
+| **Web Dashboard**      | LCD retro UI, served from SPIFFS via HTTP |
+| **WiFi**               | AP + STA dual-mode (WIFI_AP_STA)          |
 
 ---
 
@@ -65,7 +72,7 @@ _Real-time scheduling · Dual displays · NTP sync · Environmental monitoring_
 
 ### ⏰ Mode 3 — Alarm Clock
 
-- Adjustable hour/minute via SET + INC buttons
+- Adjustable hour/minute via SET + INC buttons or Web UI
 - **Alarm saved to Flash** — persists after reboot
 - Triggers in **any mode**, not just while viewing alarm screen
 - Audio (buzzer) + visual (LED blink) alert
@@ -73,7 +80,7 @@ _Real-time scheduling · Dual displays · NTP sync · Environmental monitoring_
 ### ⏱️ Mode 4 — Stopwatch
 
 - Centisecond precision (0.01s)
-- Up to 5 laps, viewable with INC button
+- Up to 5 laps, viewable with INC button or Web UI
 - Pause / resume support
 
 ### ⏲️ Mode 5 — Countdown Timer
@@ -84,10 +91,17 @@ _Real-time scheduling · Dual displays · NTP sync · Environmental monitoring_
 
 ### 🌐 NTP Time Sync
 
-- Connects to WiFi on boot → syncs RTC → disconnects
-- Frees ~40KB RAM after sync (WiFi OFF)
+- Connects to WiFi on boot → syncs RTC → stays connected (AP+STA mode)
 - Graceful fallback: if no WiFi, RTC holds previous time
 - NTP servers: `pool.ntp.org`, `time.google.com`, `time.cloudflare.com`
+
+### 🖥️ Web Dashboard _(New)_
+
+- Retro LCD-style interface served from SPIFFS
+- Real-time status polling every 1 second (`/api/status`)
+- 60fps client-side interpolation for stopwatch & countdown
+- Full control: mode switching, alarm set/stop, stopwatch, countdown
+- Runs in **AP+STA dual mode** — accessible from both home network and direct AP connection
 
 ---
 
@@ -98,9 +112,12 @@ _Real-time scheduling · Dual displays · NTP sync · Environmental monitoring_
 │                      ESP32 Core 1                       │
 │                                                         │
 │  setup()                                                │
+│    ├── initButtons()    → GPIO config                   │
+│    ├── initDisplay()    → MAX7219 init                  │
 │    ├── initSensors()    → RTC begin (Wire init)         │
 │    ├── initLCD()        → reuse Wire (no double begin)  │
-│    ├── initWiFiAndNTP() → sync RTC → WiFi OFF           │
+│    ├── initWiFiAndNTP() → sync RTC, keep WiFi ON        │
+│    ├── initWebServer()  → SPIFFS + HTTP routes + AP     │
 │    └── SCH_Init()       → start scheduler               │
 │                                                         │
 │  loop()                                                 │
@@ -117,7 +134,8 @@ _Real-time scheduling · Dual displays · NTP sync · Environmental monitoring_
 │    ├── Task_HandleLEDBlink  200ms   LED indicator       │
 │    ├── Task_CheckAlarm     1000ms   Alarm trigger       │
 │    ├── Task_ReadSensors    2000ms   DHT11 read          │
-│    └── Task_SerialMonitor  5000ms   Debug output        │
+│    ├── Task_SerialMonitor  5000ms   Debug output        │
+│    └── Task_WebServer_Handler 50ms HTTP poll            │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -136,12 +154,26 @@ DHT11 ──→ Task_ReadSensors (2s) ──→ g_temp / g_humi
                               Task_UpdateDisplay (100ms)
                               Task_UpdateLCD    (100ms)
                               Task_SerialMonitor (5s)
+                              /api/status  (on demand)
 
 DS3231 ──→ getRTC()->now() ──→ displayDateTime / Task_CheckAlarm
 
 Flash ──→ initSensors() ──→ alarmHour / alarmMinute
              (boot)
-handleIncButton() ──→ saveAlarm() ──→ Flash
+handleIncButton() / clockData_setAlarm() ──→ Preferences ──→ Flash
+
+Browser ──→ GET /api/status ──→ clockData_buildStatusJSON()
+Browser ──→ POST /api/*     ──→ clock_data functions
+```
+
+### Web Architecture (Layered)
+
+```
+clock_webserver.cpp   ← HTTP only: parse request, call clock_data, send response
+       │
+clock_data.cpp        ← Business logic: mode switch, alarm, stopwatch, countdown
+       │
+global_vars.cpp       ← Shared state (no HTTP dependency)
 ```
 
 ---
@@ -209,8 +241,14 @@ cd smart-clock-esp32
 Edit `include/config.h`:
 
 ```cpp
-#define WIFI_SSID "your_wifi_ssid"
-#define WIFI_PASS "your_wifi_password"
+#define WIFI_SSID  "your_wifi_ssid"
+#define WIFI_PASS  "your_wifi_password"
+
+// Web server config (also in config.h)
+#define WEB_USE_AP  1          // 0 = STA only, 1 = AP only, 2 = AP+STA
+#define AP_SSID     "SmartClock"
+#define AP_PASS     ""         // open AP; set >=8 chars for password
+#define WEB_PORT    80
 ```
 
 ### 3. Dependencies (`platformio.ini`)
@@ -227,12 +265,128 @@ lib_deps =
     wayoda/LedControl@^1.0.6
 ```
 
-### 4. Build & Upload
+### 4. Build & Upload Firmware
 
 ```bash
 pio run -t upload        # build + upload firmware
 pio device monitor       # open serial monitor (115200 baud)
 ```
+
+### 5. Upload Web Dashboard (SPIFFS)
+
+Place these 3 files in the `data/` directory:
+
+```
+data/
+  index.html
+  style.css
+  app.js
+```
+
+Then flash the filesystem:
+
+```bash
+pio run -t uploadfs
+```
+
+Verify the upload log shows all 3 files with correct names:
+
+```
+/app.js
+/index.html
+/style.css    ← must be style.css, NOT stype.css
+```
+
+---
+
+## 🖥️ Web Dashboard
+
+### Accessing the Dashboard
+
+| Network         | How to connect                   | URL                                 |
+| --------------- | -------------------------------- | ----------------------------------- |
+| Home WiFi (STA) | Device on same network           | `http://<STA_IP>` (shown in Serial) |
+| Direct AP       | Connect to WiFi **"SmartClock"** | `http://192.168.4.1`                |
+
+In AP+STA mode (`WEB_USE_AP 2`), both access methods work simultaneously.
+
+### Dashboard Features
+
+- **LCD retro UI** — green-on-black phosphor display aesthetic with scanlines
+- **Live clock** — updates every second from `/api/status`
+- **Mode buttons** — switch between all 5 modes from the browser
+- **Sensor panel** — shows temperature and humidity in real time
+- **Alarm panel** — set hour/minute, stop active alarm
+- **Stopwatch panel** — Start / Lap+Stop / Reset, displays up to 5 laps
+- **Countdown panel** — set HH:MM:SS, Start / Stop / Reset
+- **Physical button sync** — if mode is changed via hardware buttons, web UI syncs automatically on next poll
+
+### REST API
+
+All endpoints return JSON. Body format for POST is `application/json`.
+
+| Method | Endpoint               | Body                                       | Description                |
+| ------ | ---------------------- | ------------------------------------------ | -------------------------- |
+| `GET`  | `/api/status`          | —                                          | Full system state snapshot |
+| `POST` | `/api/mode`            | `{"mode": 0–4}`                            | Switch display mode        |
+| `POST` | `/api/alarm`           | `{"hour": H, "minute": M}`                 | Set alarm time             |
+| `POST` | `/api/alarm/stop`      | —                                          | Silence active alarm       |
+| `POST` | `/api/stopwatch/start` | —                                          | Start stopwatch            |
+| `POST` | `/api/stopwatch/stop`  | —                                          | Stop + save lap            |
+| `POST` | `/api/stopwatch/reset` | —                                          | Reset stopwatch & laps     |
+| `POST` | `/api/countdown/set`   | `{"hours": H, "minutes": M, "seconds": S}` | Set countdown duration     |
+| `POST` | `/api/countdown/start` | —                                          | Start countdown            |
+| `POST` | `/api/countdown/stop`  | —                                          | Pause countdown            |
+| `POST` | `/api/countdown/reset` | —                                          | Reset countdown            |
+
+#### Example `/api/status` response
+
+```json
+{
+  "time": {
+    "hour": 14,
+    "minute": 23,
+    "second": 7,
+    "day": 1,
+    "month": 4,
+    "year": 2026,
+    "weekday": "Wed"
+  },
+  "sensor": { "temp": 30.1, "humidity": 55.0 },
+  "mode": 3,
+  "modeName": "STOPWATCH",
+  "alarm": { "hour": 7, "minute": 0, "triggered": false, "editHour": true },
+  "stopwatch": {
+    "running": true,
+    "elapsed": 83450,
+    "lapCount": 1,
+    "laps": [41200]
+  },
+  "countdown": {
+    "running": false,
+    "editing": true,
+    "triggered": false,
+    "remaining": 0,
+    "duration": 0,
+    "editHours": 0,
+    "editMinutes": 5,
+    "editSeconds": 0
+  },
+  "system": { "heap": 235672, "uptime": 145 }
+}
+```
+
+### Web File Structure
+
+```
+data/
+├── index.html   # HTML structure: LCD bezel, panels, mode buttons, action controls
+├── style.css    # Retro LCD theme: VT323 + Share Tech Mono fonts, scanlines, green phosphor
+└── app.js       # All logic: API calls, UI panel switching, 60fps render loop
+```
+
+> **Note:** `app.js` is a single self-contained file — no build tools required.
+> It handles both API communication and UI panel switching to avoid scope conflicts.
 
 ---
 
@@ -240,15 +394,15 @@ pio device monitor       # open serial monitor (115200 baud)
 
 ### Button Controls
 
-| Button   | Mode      | Action                                  |
-| -------- | --------- | --------------------------------------- |
-| **MODE** | Any       | Cycle to next mode                      |
-| **SET**  | Alarm     | Toggle edit: Hour ↔ Minute / Stop alarm |
-| **SET**  | Stopwatch | Start → Stop + save lap → Resume        |
-| **SET**  | Countdown | Confirm field → Start / Stop alert      |
-| **INC**  | Alarm     | Increment selected field (auto-saves)   |
-| **INC**  | Stopwatch | View saved laps                         |
-| **INC**  | Countdown | Increment field / Reset to 00:00:00     |
+| Button   | Mode      | Action                                         |
+| -------- | --------- | ---------------------------------------------- |
+| **MODE** | Any       | Cycle to next mode                             |
+| **SET**  | Alarm     | Toggle edit: Hour ↔ Minute / Stop alarm        |
+| **SET**  | Stopwatch | Start → Stop + save lap → Resume               |
+| **SET**  | Countdown | Confirm field → Start / Stop alert             |
+| **INC**  | Alarm     | Increment selected field (auto-saves to Flash) |
+| **INC**  | Stopwatch | View saved laps                                |
+| **INC**  | Countdown | Increment field / Reset to 00:00:00            |
 
 ### Mode Cycle
 
@@ -350,10 +504,16 @@ smart-clock-esp32/
 │   ├── led_7seg_display.cpp/h   # MAX7219 display functions
 │   ├── lcd_display.cpp/h        # LCD 16x2 functions
 │   ├── button_handler.cpp/h     # Debounce + button logic + Flash save
-│   ├── wifi_clock.cpp/h         # WiFi connect + NTP sync + disconnect
+│   ├── wifi_clock.cpp/h         # WiFi connect + NTP sync (stays ON)
 │   ├── ntp_sync.cpp/h           # NTP query → DS3231 write
+│   ├── clock_webserver.cpp/h    # HTTP layer: routes → clock_data calls
+│   ├── clock_data.cpp/h         # Business logic: mode/alarm/SW/CD control
 │   ├── global_vars.cpp/h        # Shared state (g_temp, g_humi, etc.)
-│   └── config.h                 # Pin definitions + timing constants
+│   └── config.h                 # Pin definitions + timing + web config
+├── data/                        # SPIFFS filesystem (upload separately)
+│   ├── index.html               # Web dashboard HTML
+│   ├── style.css                # Retro LCD theme
+│   └── app.js                   # Dashboard logic + API client
 ├── platformio.ini
 ├── LICENSE
 └── README.md
@@ -363,17 +523,23 @@ smart-clock-esp32/
 
 ## 🐛 Troubleshooting
 
-| Problem                        | Likely Cause        | Fix                                                      |
-| ------------------------------ | ------------------- | -------------------------------------------------------- |
-| LCD shows nothing              | Wrong I2C address   | Try `0x27` or `0x3F` in `lcd_display.cpp`                |
-| LCD shows black squares        | Contrast too high   | Adjust potentiometer on LCD back                         |
-| DHT reads `NaN`                | Bad connection      | Check 3.3V power + GPIO 27 wiring                        |
-| RTC loses time                 | Dead battery        | Replace CR2032 in DS3231 module                          |
-| NTP sync fails                 | Wrong credentials   | Check `WIFI_SSID`/`WIFI_PASS` in `config.h`              |
-| Alarm resets on reboot         | Flash not saved     | Ensure `saveAlarm()` in `handleIncButton()`              |
-| `Wire already started` warning | Wrong init order    | Call `initSensors()` **before** `initLCD()`              |
-| Buzzer stuck ON                | Missing LOW init    | Check `digitalWrite(BUZZER_PIN, LOW)` in `initButtons()` |
-| Alarm doesn't trigger          | Old mode-only check | `Task_CheckAlarm` must not check `displayMode`           |
+| Problem                               | Likely Cause              | Fix                                                       |
+| ------------------------------------- | ------------------------- | --------------------------------------------------------- |
+| LCD shows nothing                     | Wrong I2C address         | Try `0x27` or `0x3F` in `lcd_display.cpp`                 |
+| LCD shows black squares               | Contrast too high         | Adjust potentiometer on LCD back                          |
+| DHT reads `NaN`                       | Bad connection            | Check 3.3V power + GPIO 27 wiring                         |
+| RTC loses time                        | Dead battery              | Replace CR2032 in DS3231 module                           |
+| NTP sync fails                        | Wrong credentials         | Check `WIFI_SSID`/`WIFI_PASS` in `config.h`               |
+| Alarm resets on reboot                | Flash not saved           | Ensure `Preferences` write in `clockData_setAlarm()`      |
+| `Wire already started` warning        | Wrong init order          | Call `initSensors()` **before** `initLCD()`               |
+| Buzzer stuck ON                       | Missing LOW init          | Check `digitalWrite(BUZZER_PIN, LOW)` in `initButtons()`  |
+| Alarm doesn't trigger                 | Old mode-only check       | `Task_CheckAlarm` must not check `displayMode`            |
+| Web page has no CSS                   | Wrong filename in `data/` | Must be `style.css`, not `stype.css`                      |
+| Web page shows raw HTML               | SPIFFS not flashed        | Run `pio run -t uploadfs` after uploading firmware        |
+| Web inputs reset while typing         | Old `app.js` version      | Update to latest `app.js` (uses `activeElement` check)    |
+| Web doesn't reach ESP32 (STA)         | Different subnet          | Check Serial for STA IP; ensure same WiFi network         |
+| Web doesn't update after button press | Scope conflict            | Ensure single `app.js` file, no inline `<script>` in HTML |
+| Countdown/Stopwatch not updating      | Old dual-JS architecture  | Replace both `index.html` and `app.js` together           |
 
 ---
 
@@ -396,6 +562,8 @@ furnished to do so, subject to the following conditions:
 [Full license text...]
 ```
 
+---
+
 ## 👨‍💻 **Author & Contact**
 
 **Phạm Công Võ**
@@ -411,5 +579,3 @@ furnished to do so, subject to the following conditions:
 - **Adafruit** for RTClib and DHT libraries
 - **Arduino** for the accessible development platform
 - **Contributors** who helped improve this project
-
----
