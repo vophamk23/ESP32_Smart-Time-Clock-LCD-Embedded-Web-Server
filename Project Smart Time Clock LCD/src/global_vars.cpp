@@ -3,6 +3,8 @@
 // ==================== KHỞI TẠO BIẾN ĐIỀU KHIỂN CHUNG ====================
 int displayMode = 0;               // Chế độ hiển thị hiện tại (0: Đồng hồ, 1: Bấm giờ, 2: Đếm ngược, 3: Báo thức)
 unsigned long lastButtonPress = 0; // Thời điểm lần cuối nhấn nút (dùng để debounce)
+float g_temp = 0.0f;
+float g_humi = 0.0f;
 
 // ==================== KHỞI TẠO BIẾN BẤM GIỜ ====================
 bool isTimerRunning = false;             // Trạng thái bấm giờ (true: đang chạy, false: dừng)

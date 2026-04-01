@@ -2,6 +2,9 @@
 #define GLOBAL_VARS_H
 
 #include <Arduino.h>
+// Biến toàn cục dùng chung giữa các file cpp
+extern float g_temp;
+extern float g_humi;
 
 // ==================== BIẾN ĐIỀU KHIỂN CHUNG ====================
 extern int displayMode;               // Chế độ hiển thị hiện tại
@@ -38,4 +41,4 @@ extern bool alarmEditHour;  // Đang chỉnh giờ hay phút?
 // ==================== BIẾN ĐIỀU KHIỂN LED ====================
 extern unsigned long lastLEDToggle; // Thời điểm toggle LED lần cuối
 extern bool ledState;               // Trạng thái hiện tại của LED (HIGH/LOW)
-#endif // GLOBAL_VARS_H
+#endif                              // GLOBAL_VARS_H

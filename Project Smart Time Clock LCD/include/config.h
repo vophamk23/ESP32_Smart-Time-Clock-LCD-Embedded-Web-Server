@@ -24,6 +24,10 @@
 #define DISPLAY_INTENSITY 8 // Độ sáng LED (0-15)
 #define TOTAL_MODES 5       // Tổng số chế độ hiển thị
 
+// ==================== WIFI (dùng cho NTP sync) ====================
+#define WIFI_SSID "Tuoi"
+#define WIFI_PASS "25062011@##@"
+
 // ==================== ENUM CHẾ ĐỘ HIỂN THỊ ====================
 enum DisplayMode
 {

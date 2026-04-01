@@ -5,6 +5,10 @@
 
 static LedControl lc(DIN_PIN, CLK_PIN, CS_PIN, 1);
 
+// ============================================================================
+// HÀM KHỞI TẠO LED 7-SEGMENT
+// ============================================================================
+// Chức năng: Cấu hình ban đầu cho LED 7-segment (bật, độ sáng, xóa màn hình)
 void initDisplay()
 {
     lc.shutdown(0, false);
@@ -17,6 +21,10 @@ LedControl *getLedControl()
     return &lc;
 }
 
+// ============================================================================
+// CẬP NHẬT: Hiển thị thời gian bấm giờ (lap)
+// Tham số: lc - con trỏ tới đối tượng LED 7-segment, t - thời gian bấm giờ (lap) tính bằng ms
+// ============================================================================
 void displayLapValue(LedControl *lc, unsigned long t)
 {
     unsigned long hours = (t / 3600000) % 100;
@@ -97,51 +105,33 @@ void showSavedLaps(LedControl *lc)
     Serial.println("Laps cleared after show");
 }
 
+// ============================================================================
+// CẬP NHẬT: Hiển thị nhiệt độ và độ ẩm trên LED 7-segment
+// ============================================================================
 void displayTempHumidity(DHT *dht, LedControl *lc)
 {
-    float temp = dht->readTemperature();
-    float humi = dht->readHumidity();
-
-    if (isnan(temp) || isnan(humi))
-    {
-        Serial.println("DHT read failed");
+    if (g_temp == 0.0f && g_humi == 0.0f)
         return;
-    }
 
-    Serial.print("DHT -> T=");
-    Serial.print(temp);
-    Serial.print(" C, H=");
-    Serial.print(humi);
-    Serial.println(" %");
+    int tempInt = (int)(g_temp * 10);
+    lc->setDigit(0, 7, (tempInt / 100), false);
+    lc->setDigit(0, 6, (tempInt / 10) % 10, true); // dấu thập phân
+    lc->setDigit(0, 5, tempInt % 10, false);
+    lc->setChar(0, 4, 'C', false);
 
-    if (!isnan(temp) && !isnan(humi))
-    {
-        int tempInt = (int)(temp * 10);
-        lc->setDigit(0, 5, tempInt % 10, false);
-        lc->setDigit(0, 6, (tempInt / 10) % 10, true);
-        lc->setDigit(0, 7, (tempInt / 100), false);
-        lc->setChar(0, 4, 'C', false);
-
-        int humiInt = (int)(humi * 10);
-        lc->setDigit(0, 1, humiInt % 10, false);
-        lc->setDigit(0, 2, (humiInt / 10) % 10, true);
-        lc->setDigit(0, 3, (humiInt / 100), false);
-        lc->setChar(0, 0, 'H', false);
-    }
+    int humiInt = (int)(g_humi * 10);
+    lc->setDigit(0, 3, (humiInt / 100), false);
+    lc->setDigit(0, 2, (humiInt / 10) % 10, true); // dấu thập phân
+    lc->setDigit(0, 1, humiInt % 10, false);
+    lc->setChar(0, 0, 'H', false);
 }
 
+// ============================================================================
+// CẬP NHẬT: Hiển thị thời gian hiện tại, báo thức, bấm giờ và đếm ngược trên LED 7-segment
+// ============================================================================
 void displayDateTime(RTC_DS3231 *rtc, LedControl *lc)
 {
     DateTime now = rtc->now();
-
-    Serial.print(now.hour());
-    Serial.print(":");
-    Serial.print(now.minute());
-    Serial.print(":");
-    Serial.println(now.second());
-    Serial.print(now.day());
-    Serial.print("/");
-    Serial.println(now.month());
 
     lc->setDigit(0, 7, now.hour() / 10, false);
     lc->setDigit(0, 6, now.hour() % 10, true);
@@ -154,6 +144,9 @@ void displayDateTime(RTC_DS3231 *rtc, LedControl *lc)
     lc->setDigit(0, 0, now.month() % 10, false);
 }
 
+// ============================================================================
+// CẬP NHẬT: Hiển thị báo thức trên LED 7-segment
+// ============================================================================
 void displayAlarm(RTC_DS3231 *rtc, LedControl *lc)
 {
     DateTime now = rtc->now();
@@ -178,6 +171,9 @@ void displayAlarm(RTC_DS3231 *rtc, LedControl *lc)
     lc->setDigit(0, 0, alarmMinute % 10, false);
 }
 
+// ============================================================================
+// CẬP NHẬT: Hiển thị bấm giờ trên LED 7-segment
+// ============================================================================
 void displayStopwatch(LedControl *lc)
 {
     if (isTimerRunning)
@@ -200,6 +196,9 @@ void displayStopwatch(LedControl *lc)
     lc->setDigit(0, 0, centiseconds % 10, false);
 }
 
+// ============================================================================
+// CẬP NHẬT: Hiển thị đếm ngược trên LED 7-segment, bao gồm cả chế độ chỉnh giờ và trạng thái đang chạy
+// ============================================================================
 void displayCountdown(LedControl *lc)
 {
     if (countdownEditing)

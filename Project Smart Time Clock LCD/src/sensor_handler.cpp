@@ -1,6 +1,8 @@
-#include "sensor_handler.h" // ✓ Đã dùng dấu ""
-#include "config.h"         // ✓ Đã dùng dấu ""
-#include <Arduino.h>        // ✓ Arduino.h dùng <> là đúng
+#include "sensor_handler.h"
+#include "config.h"
+#include <Arduino.h>
+#include <Preferences.h>
+#include "global_vars.h"
 
 // Khởi tạo đối tượng cảm biến DHT11 với chân DHT_PIN và loại DHT11
 static DHT dht(DHT_PIN, DHT11);
@@ -11,24 +13,33 @@ static RTC_DS3231 rtc;
 // Hàm khởi tạo các cảm biến
 void initSensors()
 {
-    // Khởi động cảm biến DHT11
     dht.begin();
-    Serial.println("DHT initialized");
+    Serial.println("[SENSOR] DHT initialized");
 
-    // Khởi động module RTC DS3231
     if (!rtc.begin())
     {
-        // Nếu không tìm thấy RTC, in thông báo lỗi và dừng chương trình
-        Serial.println("Không tìm thấy RTC");
+        Serial.println("[SENSOR] RTC not found!");
         while (1)
-            ; // Vòng lặp vô hạn - dừng chương trình tại đây
+            ;
     }
-    Serial.println("RTC found");
 
-    // Cài đặt thời gian cho RTC khi cần thiết
-    // Chỉ bỏ comment dòng này khi muốn đồng bộ thời gian RTC với thời gian compile
-    // Thời gian sẽ được lấy từ thời điểm biên dịch code (__DATE__ và __TIME__)
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    // Chỉ fallback compile time nếu RTC mất nguồn
+    // NTP sẽ ghi đè đúng giờ sau trong setup()
+    if (rtc.lostPower())
+    {
+        Serial.println("[RTC] Lost power - fallback to compile time");
+        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    }
+
+    // Load alarm từ Flash
+    Preferences prefs;
+    prefs.begin("clock", true); // true = read only
+    alarmHour = prefs.getInt("alarmHour", alarmHour); // Nếu không có giá trị nào được lưu trước đó, sử dụng giá trị hiện tại của alarmHour (mặc định là 7)
+    alarmMinute = prefs.getInt("alarmMinute", alarmMinute); // Nếu không có giá trị nào được lưu trước đó, sử dụng giá trị hiện tại của alarmMinute (mặc định là 0)
+    prefs.end();
+    Serial.printf("[ALARM] Loaded: %02d:%02d\n", alarmHour, alarmMinute);
+
+    Serial.println("[SENSOR] RTC initialized");
 }
 
 // Hàm trả về con trỏ tới đối tượng DHT

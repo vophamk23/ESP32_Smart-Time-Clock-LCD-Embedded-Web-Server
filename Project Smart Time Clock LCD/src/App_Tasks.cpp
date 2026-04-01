@@ -100,17 +100,111 @@ void Task_HandleLEDBlink()
 }
 
 /* ==================== TASK 5: SENSOR READER ==================== */
-// Đọc nhiệt độ & độ ẩm từ DHT11 mỗi 2 giây
 void Task_ReadSensors(void)
 {
-    if (displayMode == MODE_TEMP_HUMIDITY)
-    {
-        float temp = getDHT()->readTemperature();
-        float humi = getDHT()->readHumidity();
+    float temp = getDHT()->readTemperature();
+    float humi = getDHT()->readHumidity();
 
-        if (!isnan(temp) && !isnan(humi))
-        {
-            Serial.printf("DHT -> T=%.1f°C, H=%.1f%%\n", temp, humi);
-        }
+    if (!isnan(temp) && !isnan(humi))
+    {
+        g_temp = temp;
+        g_humi = humi;
     }
+}
+
+/* ==================== TASK 7: SERIAL MONITOR ==================== */
+void Task_SerialMonitor(void)
+{
+    DateTime now = getRTC()->now();
+
+    // Header chung
+    Serial.println("========== SMART CLOCK ==========");
+    Serial.printf("  Time : %02d:%02d:%02d\n",
+                  now.hour(), now.minute(), now.second());
+    Serial.printf("  Date : %02d/%02d/%04d\n",
+                  now.day(), now.month(), now.year());
+
+    const char *modeStr[] = {
+        "TEMP/HUMI", "DATE/TIME", "ALARM", "STOPWATCH", "COUNTDOWN"};
+    Serial.printf("  Mode : %s\n", modeStr[displayMode]);
+    Serial.println("---------------------------------");
+
+    // Nội dung theo mode
+    switch (displayMode)
+    {
+    case MODE_TEMP_HUMIDITY:
+        if (g_temp > 0.0f || g_humi > 0.0f)
+        {
+            Serial.printf("  Temp : %.1f C\n", g_temp);
+            Serial.printf("  Humi : %.0f%%\n", g_humi);
+        }
+        else
+            Serial.println("  Sensor: DHT ERROR");
+        break;
+
+    case MODE_DATE_TIME:
+        Serial.printf("  Day  : %s\n",
+                      (const char *[]){"Sun", "Mon", "Tue", "Wed",
+                                       "Thu", "Fri", "Sat"}[now.dayOfTheWeek()]);
+        break;
+
+    case MODE_ALARM:
+        Serial.printf("  Set  : %02d:%02d\n", alarmHour, alarmMinute);
+        Serial.printf("  State: %s\n",
+                      alarmTriggered ? "TRIGGERED!" : "Waiting");
+        break;
+
+    case MODE_STOPWATCH:
+        Serial.printf("  State: %s\n",
+                      isTimerRunning ? "RUNNING" : "STOPPED");
+        Serial.printf("  Time : %02luh %02lum %02lus\n",
+                      (timerCurrentTime / 3600000) % 100,
+                      (timerCurrentTime / 60000) % 60,
+                      (timerCurrentTime / 1000) % 60);
+        Serial.printf("  Laps : %d/%d\n", lapCount, 5);
+        for (int i = 0; i < lapCount; i++)
+            Serial.printf("    Lap%d: %02lum%02lus%03lu\n",
+                          i + 1,
+                          (laps[i] / 60000) % 60,
+                          (laps[i] / 1000) % 60,
+                          (laps[i] / 10) % 100);
+        break;
+
+    case MODE_COUNTDOWN:
+        if (countdownEditing)
+        {
+            Serial.printf("  Edit : %02d:%02d:%02d\n",
+                          c_hours, c_minutes, c_seconds);
+            Serial.printf("  Field: %s\n",
+                          countdownEditField == 0 ? "HOUR" : countdownEditField == 1 ? "MIN"
+                                                                                     : "SEC");
+        }
+        else if (isCountdownRunning)
+        {
+            Serial.printf("  Left : %02luh %02lum %02lus\n",
+                          (countdownRemaining / 3600000) % 100,
+                          (countdownRemaining / 60000) % 60,
+                          (countdownRemaining / 1000) % 60);
+            Serial.printf("  Total: %02luh %02lum %02lus\n",
+                          (countdownDuration / 3600000) % 100,
+                          (countdownDuration / 60000) % 60,
+                          (countdownDuration / 1000) % 60);
+        }
+        else
+            Serial.printf("  State: %s\n",
+                          countdownTriggered ? "FINISHED!" : "READY");
+        break;
+    }
+
+    // Màn thống kê — luôn hiển thị ở cuối mỗi lần print
+    Serial.println("---------------------------------");
+    Serial.printf("  Temp : %.1fC  Humi: %.0f%%\n", g_temp, g_humi);
+    Serial.printf("  Alarm: %02d:%02d [%s]\n",
+                  alarmHour, alarmMinute,
+                  alarmTriggered ? "ON" : "OFF");
+    Serial.printf("  SW   : %s  CD: %s\n",
+                  isTimerRunning ? "RUN" : "STOP",
+                  isCountdownRunning ? "RUN" : "STOP");
+    Serial.printf("  Heap : %u bytes\n", ESP.getFreeHeap());
+    Serial.println("=================================");
 }

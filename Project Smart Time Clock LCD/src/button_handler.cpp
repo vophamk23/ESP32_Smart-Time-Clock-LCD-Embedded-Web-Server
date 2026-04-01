@@ -3,6 +3,7 @@
 #include "global_vars.h"
 #include "led_7seg_display.h"
 #include "lcd_display.h"
+#include <Preferences.h>
 
 // ============================================================================
 // HÀM KHỞI TẠO CÁC NÚT BẤM VÀ BUZZER
@@ -23,6 +24,17 @@ void initButtons()
     // ========== LED ==========
     pinMode(LED_PIN, OUTPUT);   // Cấu hình chân LED là OUTPUT
     digitalWrite(LED_PIN, LOW); // Tắt LED khi khởi động
+}
+
+// Hàm save — dùng ở 2 chỗ
+static void saveAlarm()
+{
+    Preferences prefs;
+    prefs.begin("clock", false); // false = read/write
+    prefs.putInt("alarmHour", alarmHour);
+    prefs.putInt("alarmMinute", alarmMinute);
+    prefs.end();
+    Serial.printf("[ALARM] Saved: %02d:%02d\n", alarmHour, alarmMinute);
 }
 
 // ============================================================================
@@ -270,6 +282,7 @@ void handleIncButton()
         {
             alarmMinute = (alarmMinute + 1) % 60; // Tăng phút (0-59, quay vòng)
         }
+        saveAlarm(); // Lưu cài đặt báo thức vào bộ nhớ flash
     }
 
     // ========================================================================
