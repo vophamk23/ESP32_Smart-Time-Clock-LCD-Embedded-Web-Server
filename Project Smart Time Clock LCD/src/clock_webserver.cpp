@@ -17,14 +17,6 @@
 #include <SPIFFS.h>
 #include "config.h"
 
-// ============================================================================
-// CẤU HÌNH
-// ============================================================================
-#define WEB_USE_AP 0 // 0 = STA mode, 1 = AP mode
-#define AP_SSID "SmartClock"
-#define AP_PASS "" // trống = open; >=8 ký tự = có mật khẩu
-#define WEB_PORT 80
-
 static WebServer server(WEB_PORT);
 
 // ============================================================================
