@@ -39,7 +39,6 @@
 - [Project Structure](#-project-structure)
 - [Troubleshooting](#-troubleshooting)
 
----
 
 ## 🌟 Overview
 
@@ -61,7 +60,6 @@ A built-in **HTTP Web Dashboard** (served from SPIFFS) allows full remote contro
 | **Web Dashboard**      | LCD retro UI, served from SPIFFS via HTTP |
 | **WiFi**               | AP + STA dual-mode (WIFI_AP_STA)          |
 
----
 
 ## ✨ Features
 
@@ -110,7 +108,6 @@ A built-in **HTTP Web Dashboard** (served from SPIFFS) allows full remote contro
 - Full control: mode switching, alarm set/stop, stopwatch, countdown
 - Runs in **AP+STA dual mode** — accessible from both home network and direct AP connection
 
----
 
 ## 🏗️ Architecture
 
@@ -221,7 +218,6 @@ setup() chạy tuần tự:
        └─ SCH_Add_Task(...)  → Đăng ký 8 task với delay/period tính bằng ticks
 ```
 
----
 
 ### 2. Luồng vận hành chính (Main loop)
 
@@ -252,7 +248,6 @@ loop() chạy liên tục:
        └─ Serial command handler     → đọc ký tự từ Serial → đổi mode/reset alarm
 ```
 
----
 
 ### 3. Luồng đọc cảm biến và hiển thị
 
@@ -278,7 +273,6 @@ Task_UpdateDisplay / Task_UpdateLCD
        └─ MODE_COUNTDOWN     → tính countdownDuration - elapsed → hiển thị
 ```
 
----
 
 ### 4. Luồng báo thức (Alarm)
 
@@ -314,7 +308,6 @@ clockData_stopAlarm()
        └─ digitalWrite(LED_PIN, LOW)
 ```
 
----
 
 ### 5. Luồng nút nhấn (Button)
 
@@ -342,7 +335,6 @@ Debounce: millis() - lastButtonPress >= BUTTON_DEBOUNCE (300ms)
            └─ COUNTDOWN → tăng giá trị trường đang chọn; reset nếu đang chạy
 ```
 
----
 
 ### 6. Luồng Web Dashboard
 
@@ -380,7 +372,6 @@ app.js chạy trong browser:
            Poll tiếp theo (1s sau) → browser thấy trạng thái mới
 ```
 
----
 
 ### 7. Luồng Stopwatch và Countdown
 
@@ -420,7 +411,6 @@ COUNTDOWN:
   SET/web stop → tắt buzzer, tắt LED, reset flags
 ```
 
----
 
 ### 8. Sơ đồ luồng tổng quan
 
@@ -490,7 +480,6 @@ COUNTDOWN:
 | Push Button   | Tactile switch                   | 3   |
 | Jumper Wires  | Male-to-male / male-to-female    | ~20 |
 
----
 
 ## 📌 Pin Configuration
 
@@ -522,7 +511,6 @@ ESP32 DevKit
 > **Important:** `initSensors()` must be called **before** `initLCD()` in `setup()`
 > so that `Wire.begin()` is only called once (inside `rtc.begin()`).
 
----
 
 ## 💻 Installation
 
@@ -594,7 +582,6 @@ Verify the upload log shows all 3 files with correct names:
 /style.css    ← must be style.css, NOT stype.css
 ```
 
----
 
 ## 🖥️ Web Dashboard
 
@@ -685,7 +672,7 @@ data/
 > **Note:** `app.js` is a single self-contained file — no build tools required.
 > It handles both API communication and UI panel switching to avoid scope conflicts.
 
----
+
 
 ## 📖 Usage Guide
 
@@ -708,7 +695,7 @@ TEMP/HUMI → DATE/TIME → ALARM → STOPWATCH → COUNTDOWN
    [MODE]      [MODE]    [MODE]    [MODE]       [MODE] → (back)
 ```
 
----
+
 
 ## 💻 Serial Commands
 
@@ -745,8 +732,6 @@ Open serial monitor at **115200 baud**:
   Heap : 283848 bytes
 =================================
 ```
-
----
 
 ## 📺 Display Formats
 
@@ -787,7 +772,7 @@ Mode 4 — Stopwatch:          Mode 5 — Countdown:
 └────────────────┘           └────────────────┘
 ```
 
----
+
 
 ## 📁 Project Structure
 
@@ -816,7 +801,6 @@ smart-clock-esp32/
 └── README.md
 ```
 
----
 
 ## 🐛 Troubleshooting
 
@@ -838,7 +822,6 @@ smart-clock-esp32/
 | Web doesn't update after button press | Scope conflict            | Ensure single `app.js` file, no inline `<script>` in HTML |
 | Countdown/Stopwatch not updating      | Old dual-JS architecture  | Replace both `index.html` and `app.js` together           |
 
----
 
 ## 📄 **License**
 
@@ -859,7 +842,7 @@ furnished to do so, subject to the following conditions:
 [Full license text...]
 ```
 
----
+
 
 ## 👨‍💻 **Author & Contact**
 
@@ -868,7 +851,6 @@ furnished to do so, subject to the following conditions:
 - 📧 Email: [congvolv1@gmail.com](mailto:congvolv1@gmail.com)
 - 🐙 GitHub: [@vophamk23](https://github.com/vophamk23)
 
----
 
 ## 🙏 **Acknowledgments**
 
