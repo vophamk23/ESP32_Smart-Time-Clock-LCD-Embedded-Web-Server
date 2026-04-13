@@ -19,7 +19,6 @@
 <br/>
 
 ![Smart Clock System](Report/Smart%20Time%20Clock.jpg)
-
 <br/>
 
 </div>
