@@ -3,15 +3,17 @@
  * Tầng HTTP — chỉ xử lý request/response và serve file từ SPIFFS
  *
  * Phụ thuộc:
- *   - clock_data.h  : mọi logic dữ liệu
+ *   - clock_data.h  : mọi logic dữ liệu (không có HTTP ở đây)
  *   - SPIFFS        : phục vụ index.html / style.css / app.js từ thư mục data/
  *
  * AP Mode  : kết nối WiFi "SmartClock" → http://192.168.4.1
  * STA Mode : đổi WEB_USE_AP = 0, giữ WiFi ON trong wifi_clock.cpp
+ *
  */
 
 #include "clock_webserver.h"
 #include "clock_data.h"
+#include "global_vars.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <SPIFFS.h>
@@ -20,8 +22,10 @@
 static WebServer server(WEB_PORT);
 
 // ============================================================================
-// HELPER: CORS + parse body
+// HELPER: Thêm CORS header vào response
 // ============================================================================
+// Cho phép browser từ bất kỳ origin nào gọi API này (cần thiết khi
+// frontend chạy trên domain/port khác với ESP32)
 static void addCORS()
 {
   server.sendHeader("Access-Control-Allow-Origin", "*");
@@ -29,29 +33,48 @@ static void addCORS()
   server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
-// Lấy giá trị int của một key trong JSON body đơn giản
-// VD: body = {"hour":7,"minute":30}  → getInt(body,"hour") = 7
+// ============================================================================
+// HELPER: Parse giá trị int từ JSON body đơn giản
+// ============================================================================
+// Tìm key trong chuỗi JSON và trả về giá trị int sau dấu ':'
+// VD: body = {"hour":7,"minute":30} → getInt(body, "hour") = 7
 static int getInt(const String &body, const char *key)
 {
+  // Tạo chuỗi tìm kiếm có dấu ngoặc kép: "hour"
   String k = "\"";
   k += key;
   k += "\"";
+
   int idx = body.indexOf(k);
   if (idx < 0)
+    return 0; // Không tìm thấy key
+
+  // Vị trí ngay sau key (ký tự '"' đóng)
+  int afterKey = idx + k.length();
+
+  // Bỏ qua khoảng trắng giữa key và dấu ':'
+  while (afterKey < (int)body.length() && body[afterKey] == ' ')
+    afterKey++;
+
+  // Ký tự tiếp theo PHẢI là ':' — nếu không phải thì không phải key này
+  // VD: "hours" sẽ có ký tự 's' ở đây, không phải ':' → bỏ qua đúng
+  if (afterKey >= (int)body.length() || body[afterKey] != ':')
     return 0;
-  int colon = body.indexOf(':', idx);
-  if (colon < 0)
-    return 0;
-  return body.substring(colon + 1).toInt();
+
+  // Lấy giá trị số sau dấu ':'
+  return body.substring(afterKey + 1).toInt();
 }
 
 // ============================================================================
-// SERVE STATIC FILES TỪ SPIFFS
+// HELPER: Serve file tĩnh từ SPIFFS
 // ============================================================================
+// Mở file từ SPIFFS và stream về browser với Content-Type phù hợp
+// Trả về false nếu file không tồn tại (để caller gửi 404)
 static bool serveFile(const String &path, const char *contentType)
 {
   if (!SPIFFS.exists(path))
     return false;
+
   File f = SPIFFS.open(path, "r");
   server.streamFile(f, contentType);
   f.close();
@@ -59,63 +82,99 @@ static bool serveFile(const String &path, const char *contentType)
 }
 
 // ============================================================================
-// ROUTE HANDLERS — tất cả chỉ parse/validate rồi gọi clock_data
+// ROUTE: GET / → index.html
 // ============================================================================
-
-// GET / → index.html từ SPIFFS
+// Trả về trang web chính từ SPIFFS
+// Nếu chưa upload data/ bằng PlatformIO → hiển thị hướng dẫn
 void handleRoot()
 {
   if (!serveFile("/index.html", "text/html"))
-    server.send(404, "text/plain", "index.html not found. Upload SPIFFS data first.");
+    server.send(404, "text/plain",
+                "index.html not found. Upload SPIFFS data first.");
 }
 
-// GET /style.css
+// ============================================================================
+// ROUTE: GET /style.css
+// ============================================================================
 void handleCSS()
 {
   if (!serveFile("/style.css", "text/css"))
     server.send(404, "text/plain", "style.css not found");
 }
 
-// GET /app.js
+// ============================================================================
+// ROUTE: GET /app.js
+// ============================================================================
 void handleJS()
 {
   if (!serveFile("/app.js", "application/javascript"))
     server.send(404, "text/plain", "app.js not found");
 }
 
-// GET /api/status
+// ============================================================================
+// ROUTE: GET /api/status → trả về JSON trạng thái toàn bộ đồng hồ
+// ============================================================================
+// Trả về JSON gồm: time, sensor, mode, alarm, stopwatch, countdown, system
 void handleGetStatus()
 {
   addCORS();
-  server.send(200, "application/json", clockData_buildStatusJSON());
+
+  static String s_cache;           // Bộ nhớ đệm JSON
+  static uint32_t s_cacheTime = 0; // Thời điểm cache lần cuối
+
+  // Chỉ build lại JSON khi cache rỗng hoặc đã quá 500ms
+  if (s_cache.isEmpty() || millis() - s_cacheTime >= 500)
+  {
+    s_cache = clockData_buildStatusJSON();
+    s_cacheTime = millis();
+  }
+
+  server.send(200, "application/json", s_cache);
 }
 
-// POST /api/mode   {"mode":N}
+// ============================================================================
+// ROUTE: POST /api/mode  body: {"mode": N}
+// ============================================================================
+// Chuyển đổi chế độ hiển thị (0=TEMP, 1=DATETIME, 2=ALARM, 3=SW, 4=CD)
+// clockData_setMode() validate range và reset state phù hợp
 void handleSetMode()
 {
   addCORS();
   int m = getInt(server.arg("plain"), "mode");
+
   if (clockData_setMode(m))
-    server.send(200, "application/json", "{\"ok\":true,\"mode\":" + String(m) + "}");
+    server.send(200, "application/json",
+                "{\"ok\":true,\"mode\":" + String(m) + "}");
   else
-    server.send(400, "application/json", "{\"error\":\"invalid mode\"}");
+    server.send(400, "application/json",
+                "{\"error\":\"invalid mode\"}");
 }
 
-// POST /api/alarm  {"hour":H,"minute":M}
+// ============================================================================
+// ROUTE: POST /api/alarm  body: {"hour": H, "minute": M}
+// ============================================================================
+// Cài đặt giờ báo thức và lưu vào Preferences (flash)
+// clockData_setAlarm() validate range 0-23 / 0-59
 void handleSetAlarm()
 {
   addCORS();
   String body = server.arg("plain");
   int h = getInt(body, "hour");
   int m = getInt(body, "minute");
+
   if (clockData_setAlarm(h, m))
     server.send(200, "application/json",
-                "{\"ok\":true,\"hour\":" + String(h) + ",\"minute\":" + String(m) + "}");
+                "{\"ok\":true,\"hour\":" + String(h) +
+                    ",\"minute\":" + String(m) + "}");
   else
-    server.send(400, "application/json", "{\"error\":\"out of range\"}");
+    server.send(400, "application/json",
+                "{\"error\":\"out of range\"}");
 }
 
-// POST /api/alarm/stop
+// ============================================================================
+// ROUTE: POST /api/alarm/stop
+// ============================================================================
+// Tắt báo thức đang kêu: tắt buzzer, tắt LED, reset cờ alarmTriggered
 void handleStopAlarm()
 {
   addCORS();
@@ -123,7 +182,10 @@ void handleStopAlarm()
   server.send(200, "application/json", "{\"ok\":true}");
 }
 
-// POST /api/stopwatch/start
+// ============================================================================
+// ROUTE: POST /api/stopwatch/start
+// ============================================================================
+// Bắt đầu hoặc tiếp tục bấm giờ từ thời điểm dừng trước đó (pause/resume)
 void handleSWStart()
 {
   addCORS();
@@ -131,7 +193,10 @@ void handleSWStart()
   server.send(200, "application/json", "{\"ok\":true,\"running\":true}");
 }
 
-// POST /api/stopwatch/stop
+// ============================================================================
+// ROUTE: POST /api/stopwatch/stop
+// ============================================================================
+// Dừng bấm giờ và lưu lap hiện tại (tối đa 5 laps)
 void handleSWStop()
 {
   addCORS();
@@ -139,7 +204,10 @@ void handleSWStop()
   server.send(200, "application/json", "{\"ok\":true,\"running\":false}");
 }
 
-// POST /api/stopwatch/reset
+// ============================================================================
+// ROUTE: POST /api/stopwatch/reset
+// ============================================================================
+// Reset toàn bộ stopwatch: xóa thời gian, xóa tất cả laps
 void handleSWReset()
 {
   addCORS();
@@ -147,37 +215,66 @@ void handleSWReset()
   server.send(200, "application/json", "{\"ok\":true}");
 }
 
-// POST /api/countdown/set  {"hours":H,"minutes":M,"seconds":S}
+// ============================================================================
+// ROUTE: POST /api/countdown/set  body: {"hours": H, "minutes": M, "seconds": S}
+// ============================================================================
+// Cài đặt thời gian đếm ngược, chuyển sang chế độ editing
+// Giá trị được constrain: hours 0-99, minutes/seconds 0-59
 void handleCDSet()
 {
   addCORS();
   String body = server.arg("plain");
+
   clockData_cdSet(
       getInt(body, "hours"),
       getInt(body, "minutes"),
       getInt(body, "seconds"));
+
   server.send(200, "application/json", "{\"ok\":true}");
 }
 
-// POST /api/countdown/start
+// ============================================================================
+// ROUTE: POST /api/countdown/start
+// ============================================================================
+// Bắt đầu đếm ngược với thời gian đã cài đặt
+// Trả về 400 nếu thời gian = 0 (chưa cài hoặc cài sai)
 void handleCDStart()
 {
   addCORS();
+
   if (clockData_cdStart())
     server.send(200, "application/json", "{\"ok\":true}");
   else
-    server.send(400, "application/json", "{\"error\":\"zero duration\"}");
+    server.send(400, "application/json",
+                "{\"error\":\"zero duration\"}");
 }
 
-// POST /api/countdown/stop
+// ============================================================================
+// ROUTE: POST /api/countdown/stop
+// ============================================================================
+// Dừng countdown đang chạy
 void handleCDStop()
 {
   addCORS();
   clockData_cdStop();
+
+  // Tắt buzzer và LED nếu countdown đang trong trạng thái kêu
+  if (countdownTriggered)
+  {
+    digitalWrite(BUZZER_PIN, LOW);
+    digitalWrite(LED_PIN, LOW);
+    countdownTriggered = false; // Reset cờ
+    countdownEditing = true;    // Quay lại chế độ chỉnh sửa
+    Serial.println("[WEB] Countdown triggered → stopped via web");
+  }
+
   server.send(200, "application/json", "{\"ok\":true}");
 }
 
-// POST /api/countdown/reset
+// ============================================================================
+// ROUTE: POST /api/countdown/reset
+// ============================================================================
+// Reset toàn bộ countdown: tắt buzzer/LED, xóa thời gian, về chế độ editing
 void handleCDReset()
 {
   addCORS();
@@ -186,18 +283,20 @@ void handleCDReset()
 }
 
 // ============================================================================
-// KHỞI TẠO
+// KHỞI TẠO WEBSERVER
 // ============================================================================
+// Gọi 1 lần trong setup() — mount SPIFFS, cấu hình WiFi, đăng ký routes
 void initWebServer()
 {
-  // --- SPIFFS ---
+  // --- Mount SPIFFS để serve file tĩnh ---
   if (!SPIFFS.begin(true))
     Serial.println("[WEB] SPIFFS mount failed!");
   else
     Serial.println("[WEB] SPIFFS mounted OK");
 
-  // --- WiFi ---
+  // --- Cấu hình WiFi theo mode ---
 #if WEB_USE_AP
+  // AP mode: ESP32 tự tạo WiFi riêng, không cần router
   WiFi.mode(WIFI_AP);
   (strlen(AP_PASS) >= 8) ? WiFi.softAP(AP_SSID, AP_PASS)
                          : WiFi.softAP(AP_SSID);
@@ -205,11 +304,12 @@ void initWebServer()
   Serial.printf("[WEB] AP IP   : %s\n", WiFi.softAPIP().toString().c_str());
   Serial.printf("[WEB] URL     : http://%s\n", WiFi.softAPIP().toString().c_str());
 #else
+  // STA mode: ESP32 kết nối vào WiFi nhà, lấy IP từ router
   Serial.printf("[WEB] STA IP  : %s\n", WiFi.localIP().toString().c_str());
   Serial.printf("[WEB] URL     : http://%s\n", WiFi.localIP().toString().c_str());
 #endif
 
-  // --- Routes ---
+  // --- Đăng ký tất cả routes ---
   server.on("/", HTTP_GET, handleRoot);
   server.on("/style.css", HTTP_GET, handleCSS);
   server.on("/app.js", HTTP_GET, handleJS);
@@ -225,18 +325,31 @@ void initWebServer()
   server.on("/api/countdown/stop", HTTP_POST, handleCDStop);
   server.on("/api/countdown/reset", HTTP_POST, handleCDReset);
 
+  // --- Xử lý route không tồn tại ---
+  // OPTIONS request: browser gửi trước POST để check CORS → trả 204
+  // Các request khác không tìm thấy → trả 404
   server.onNotFound([&]()
                     {
-        if (server.method() == HTTP_OPTIONS) { addCORS(); server.send(204); }
-        else server.send(404, "text/plain", "Not found"); });
+        if (server.method() == HTTP_OPTIONS)
+        {
+            addCORS();
+            server.send(204);
+        }
+        else
+        {
+            server.send(404, "text/plain", "Not found");
+        } });
 
   server.begin();
   Serial.printf("[WEB] HTTP server started port %d\n", WEB_PORT);
 }
 
 // ============================================================================
-// SCHEDULER TASK
+// SCHEDULER TASK: Xử lý HTTP request
 // ============================================================================
+// Được gọi mỗi 50ms từ cooperative scheduler (Task_WebServer_Handler)
+// handleClient() kiểm tra có request đến không và xử lý ngay trong lần gọi đó
+// Không block — nếu không có request thì trả về ngay lập tức
 void Task_WebServer()
 {
   server.handleClient();

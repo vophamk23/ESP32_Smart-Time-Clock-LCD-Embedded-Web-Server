@@ -2,7 +2,7 @@
 
 <div align="center">
 
-*Real-time scheduling · Dual displays · NTP sync · Environmental monitoring · Web Dashboard*
+_Real-time scheduling · Dual displays · NTP sync · Environmental monitoring · Web Dashboard_
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform: ESP32](https://img.shields.io/badge/Platform-ESP32-blue.svg)](https://www.espressif.com/en/products/socs/esp32)
@@ -18,6 +18,7 @@
 - [Overview](#-overview)
 - [Features](#-features)
 - [Architecture](#-architecture)
+- [System Flow](#-system-flow)
 - [Hardware](#-hardware)
 - [Pin Configuration](#-pin-configuration)
 - [Installation](#-installation)
@@ -170,6 +171,299 @@ clock_webserver.cpp   ← HTTP only: parse request, call clock_data, send respon
 clock_data.cpp        ← Business logic: mode switch, alarm, stopwatch, countdown
        │
 global_vars.cpp       ← Shared state (no HTTP dependency)
+```
+
+---
+
+## 🔄 System Flow
+
+Phần này mô tả chi tiết luồng hoạt động của hệ thống từ lúc khởi động đến khi vận hành ổn định.
+
+### 1. Luồng khởi động (Boot sequence)
+
+```
+Cấp nguồn ESP32
+       │
+       ▼
+setup() chạy tuần tự:
+       │
+       ├─ initButtons()      → Cấu hình GPIO nút nhấn (INPUT_PULLUP) + buzzer + LED
+       │
+       ├─ initDisplay()      → Khởi động MAX7219 (SPI): bật, độ sáng, xóa màn hình
+       │
+       ├─ initSensors()      → Wire.begin() (I2C) → RTC.begin()
+       │                       Nếu RTC mất nguồn: fallback về thời gian compile
+       │                       Load alarmHour/alarmMinute từ Flash (Preferences)
+       │
+       ├─ initLCD()          → Reuse Wire đã begin → LCD.begin() → hiện "Initializing..."
+       │
+       ├─ initWiFiAndNTP()   → Kết nối WiFi (timeout 15s)
+       │                         ├─ Thành công: sync NTP → ghi vào DS3231 → giữ WiFi ON
+       │                         └─ Thất bại: RTC giữ giờ cũ → tiếp tục bình thường
+       │
+       ├─ initWebServer()    → Mount SPIFFS → đăng ký 14 HTTP routes → server.begin()
+       │                       AP mode: tạo WiFi "SmartClock"
+       │                       STA mode: dùng IP từ router
+       │
+       ├─ SCH_Init()         → Khởi tạo mảng task, reset elapsed_time
+       │
+       ├─ SCH_Init_Timer()   → Cấu hình hardware timer (80MHz ÷ 80 = 1μs/tick)
+       │                       Alarm = 10ms → ISR gọi SCH_Update() mỗi 10ms
+       │
+       └─ SCH_Add_Task(...)  → Đăng ký 8 task với delay/period tính bằng ticks
+```
+
+---
+
+### 2. Luồng vận hành chính (Main loop)
+
+```
+loop() chạy liên tục:
+       │
+       ├─ SCH_Dispatch_Tasks()
+       │       │
+       │       │  [Mỗi 10ms — Hardware Timer ISR]
+       │       │  onTimer() → SCH_Update()
+       │       │    → Giảm delay của task đầu tiên 1 tick
+       │       │    → Nếu delay = 0: đánh dấu RunMe++
+       │       │
+       │       │  [Khi có task RunMe > 0]
+       │       │  Cập nhật delay tất cả task còn lại
+       │       │  Thực thi task → reschedule với Period
+       │       │
+       │       ├─ Task_CheckButtons   (50ms)   → đọc 3 nút → xử lý mode/set/inc
+       │       ├─ Task_UpdateDisplay  (100ms)  → render LED 7-segment theo mode
+       │       ├─ Task_UpdateLCD      (100ms)  → render LCD 16x2 theo mode
+       │       ├─ Task_HandleLEDBlink (200ms)  → nhấp nháy LED khi alarm/countdown kêu
+       │       ├─ Task_CheckAlarm     (1000ms) → so giờ RTC với alarmHour:alarmMinute
+       │       │                                  → bật buzzer nếu khớp (second == 0)
+       │       ├─ Task_ReadSensors    (2000ms) → đọc DHT11 → cập nhật g_temp, g_humi
+       │       ├─ Task_SerialMonitor  (5000ms) → in trạng thái hệ thống ra Serial
+       │       └─ Task_WebServer_Handler (50ms)→ server.handleClient() → xử lý HTTP
+       │
+       └─ Serial command handler     → đọc ký tự từ Serial → đổi mode/reset alarm
+```
+
+---
+
+### 3. Luồng đọc cảm biến và hiển thị
+
+```
+Task_ReadSensors (mỗi 2 giây)
+       │
+       ▼
+DHT11.readTemperature() / readHumidity()
+       │
+       ├─ Hợp lệ  → cập nhật g_temp, g_humi (global vars)
+       └─ NaN     → giữ giá trị cũ, không cập nhật
+
+       ↓ (100ms sau)
+
+Task_UpdateDisplay / Task_UpdateLCD
+       │
+       ▼
+Đọc displayMode → chọn hàm render phù hợp:
+       ├─ MODE_TEMP_HUMIDITY → hiển thị g_temp, g_humi
+       ├─ MODE_DATE_TIME     → getRTC()->now() → hiển thị giờ/ngày
+       ├─ MODE_ALARM         → hiển thị giờ hiện tại + giờ báo thức
+       ├─ MODE_STOPWATCH     → tính millis() - timerStartTime → hiển thị
+       └─ MODE_COUNTDOWN     → tính countdownDuration - elapsed → hiển thị
+```
+
+---
+
+### 4. Luồng báo thức (Alarm)
+
+```
+Task_CheckAlarm (mỗi 1 giây)
+       │
+       ▼
+getRTC()->now() → lấy giờ hiện tại
+       │
+       ▼
+So sánh: now.hour() == alarmHour
+         now.minute() == alarmMinute
+         now.second() == 0
+         alarmTriggered == false
+       │
+       ├─ Khớp → alarmTriggered = true
+       │          digitalWrite(BUZZER_PIN, HIGH)
+       │          Serial.println("ALARM TRIGGERED!")
+       │
+       └─ Không khớp → bỏ qua
+
+Task_HandleLEDBlink (mỗi 200ms)
+       │
+       ▼
+alarmTriggered == true → nhấp nháy LED_PIN
+
+Tắt báo thức (nút SET hoặc web /api/alarm/stop):
+       │
+       ▼
+clockData_stopAlarm()
+       ├─ alarmTriggered = false
+       ├─ digitalWrite(BUZZER_PIN, LOW)
+       └─ digitalWrite(LED_PIN, LOW)
+```
+
+---
+
+### 5. Luồng nút nhấn (Button)
+
+```
+Task_CheckButtons (mỗi 50ms)
+       │
+       ▼
+digitalRead(BTN_MODE_PIN / BTN_SET_PIN / BTN_INC_PIN)
+       │
+       ▼
+Debounce: millis() - lastButtonPress >= BUTTON_DEBOUNCE (300ms)
+       │
+       ├─ MODE pressed → displayMode = (displayMode + 1) % TOTAL_MODES
+       │                  Reset state của mode mới
+       │                  Caller xóa LED + LCD
+       │
+       ├─ SET pressed  → Tùy mode:
+       │   ├─ ALARM     → toggle chỉnh giờ/phút; tắt alarm nếu đang kêu
+       │   ├─ STOPWATCH → start/stop + lưu lap
+       │   └─ COUNTDOWN → xác nhận trường → start; tắt nếu đang kêu
+       │
+       └─ INC pressed  → Tùy mode:
+           ├─ ALARM     → tăng giờ hoặc phút → lưu Flash
+           ├─ STOPWATCH → showSavedLaps() (state machine, không blocking)
+           └─ COUNTDOWN → tăng giá trị trường đang chọn; reset nếu đang chạy
+```
+
+---
+
+### 6. Luồng Web Dashboard
+
+```
+Browser mở http://<IP_ESP32>
+       │
+       ▼
+GET / → serveFile("/index.html") từ SPIFFS
+GET /style.css, /app.js → serveFile() tương ứng
+       │
+       ▼
+app.js chạy trong browser:
+       │
+       ├─ Poll GET /api/status mỗi 1 giây
+       │       │
+       │       ▼
+       │   clockData_buildStatusJSON() → snprintf → String
+       │   (cache 500ms trong handleGetStatus)
+       │       │
+       │       ▼
+       │   Browser cập nhật UI: giờ, cảm biến, mode, trạng thái các chức năng
+       │
+       └─ User bấm nút trên web → POST /api/<endpoint>
+               │
+               ▼
+           clock_webserver.cpp parse body → gọi clock_data function
+               │
+               ▼
+           clock_data cập nhật global_vars / GPIO
+               │
+               ▼
+           Trả về JSON {"ok": true} hoặc {"error": "..."}
+               │
+               ▼
+           Poll tiếp theo (1s sau) → browser thấy trạng thái mới
+```
+
+---
+
+### 7. Luồng Stopwatch và Countdown
+
+```
+STOPWATCH:
+  SET (start) → timerStartTime = millis() - timerCurrentTime
+                isTimerRunning = true
+       │
+       ▼ (100ms)
+  Task_UpdateDisplay/LCD → timerCurrentTime = millis() - timerStartTime
+                           hiển thị HH:MM:SS.CC realtime
+       │
+  SET (stop)  → timerCurrentTime = millis() - timerStartTime
+                isTimerRunning = false
+                laps[lapCount++] = timerCurrentTime (tối đa 5)
+       │
+  INC (view)  → showSavedLaps() state machine
+                Mỗi lần gọi: hiển thị lap hiện tại
+                Sau 2000ms: tiến sang lap tiếp theo
+                Sau lap cuối: reset tất cả
+
+COUNTDOWN:
+  SET (confirm field) → countdownEditField++ (0→1→2)
+  SET (field 2 done)  → countdownDuration = total * 1000
+                        countdownStartTime = millis()
+                        isCountdownRunning = true
+       │
+       ▼ (100ms)
+  Task_UpdateDisplay/LCD → elapsed = millis() - countdownStartTime
+                           remaining = countdownDuration - elapsed
+                           hiển thị HH:MM:SS.CC đếm ngược
+       │
+  Hết giờ → countdownTriggered = true
+             digitalWrite(BUZZER_PIN, HIGH)
+             digitalWrite(LED_PIN, HIGH)
+       │
+  SET/web stop → tắt buzzer, tắt LED, reset flags
+```
+
+---
+
+### 8. Sơ đồ luồng tổng quan
+
+```
+                    ┌─────────────┐
+                    │   Cấp nguồn  │
+                    └──────┬──────┘
+                           │
+                    ┌──────▼──────┐
+                    │   setup()   │
+                    │  (tuần tự)  │
+                    └──────┬──────┘
+                           │
+          ┌────────────────┼────────────────┐
+          │                │                │
+   ┌──────▼──────┐  ┌──────▼──────┐  ┌─────▼──────┐
+   │  Hardware   │  │   WiFi +    │  │  SPIFFS +  │
+   │  Init GPIO  │  │  NTP sync   │  │ WebServer  │
+   │  RTC, LCD   │  │  → DS3231   │  │  14 routes │
+   └──────┬──────┘  └──────┬──────┘  └─────┬──────┘
+          │                │                │
+          └────────────────┼────────────────┘
+                           │
+                    ┌──────▼──────┐
+                    │ SCH_Init()  │
+                    │  + Timer    │
+                    └──────┬──────┘
+                           │
+              ┌────────────▼────────────┐
+              │         loop()          │
+              │                         │
+              │  ┌───────────────────┐  │
+              │  │  SCH_Dispatch()   │  │
+              │  │                   │  │
+              │  │ ←── ISR 10ms ──→  │  │
+              │  │   SCH_Update()    │  │
+              │  └─────────┬─────────┘  │
+              │            │            │
+              │   ┌────────▼────────┐   │
+              │   │  8 Tasks chạy  │   │
+              │   │  theo interval │   │
+              │   └────────┬────────┘   │
+              └────────────┼────────────┘
+                           │
+           ┌───────────────┼───────────────┐
+           │               │               │
+    ┌──────▼──────┐ ┌──────▼──────┐ ┌─────▼──────┐
+    │   Hiển thị  │ │    Alarm    │ │    Web     │
+    │  LED + LCD  │ │  Watchdog   │ │  poll 50ms │
+    │   100ms     │ │   1000ms    │ │  handleClient│
+    └─────────────┘ └─────────────┘ └─────────────┘
 ```
 
 ---

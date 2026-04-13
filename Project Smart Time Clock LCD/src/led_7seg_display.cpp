@@ -47,62 +47,65 @@ void displayLapValue(LedControl *lc, unsigned long t)
 // ============================================================================
 void showSavedLaps(LedControl *lc)
 {
-    if (lapCount <= 0)
+    // State machine tĩnh — giữ trạng thái giữa các lần gọi
+    static int s_lapIndex = -1; // -1 = chưa bắt đầu
+    static unsigned long s_lapShowTime = 0;
+
+    // ── Khởi động lần đầu ──
+    if (s_lapIndex == -1)
     {
-        Serial.println("No laps to show");
-        getLCD()->clear();
-        getLCD()->setCursor(0, 0);
-        getLCD()->print("No laps saved");
-        delay(1500);
+        if (lapCount <= 0)
+        {
+            Serial.println("[LAP] No laps to show");
+            getLCD()->clear();
+            getLCD()->setCursor(0, 0);
+            getLCD()->print("No laps saved");
+            return;
+        }
+        s_lapIndex = 0;
+        s_lapShowTime = millis();
+        Serial.printf("[LAP] Showing %d laps\n", lapCount);
+    }
+
+    // ── Đã hiển thị hết ──
+    if (s_lapIndex >= lapCount)
+    {
+        // Reset tất cả
+        for (int i = 0; i < 5; i++)
+            laps[i] = 0;
+        lapCount = 0;
         timerCurrentTime = 0;
         timerStartTime = 0;
         isTimerRunning = false;
+        s_lapIndex = -1;
+
+        lc->clearDisplay(0);
+        getLCD()->clear();
+        getLCD()->setCursor(0, 0);
+        getLCD()->print("Laps cleared");
+        Serial.println("[LAP] Laps cleared after show");
         return;
     }
 
-    Serial.print("Showing ");
-    Serial.print(lapCount);
-    Serial.println(" saved laps");
+    // ── Hiển thị lap hiện tại ──
+    displayLapValue(lc, laps[s_lapIndex]);
+    displayLCD_LapValue(laps[s_lapIndex]);
 
-    for (int i = 0; i < lapCount; ++i)
-    {
-        Serial.print("Lap ");
-        Serial.print(i + 1);
-        Serial.print(": ");
-        Serial.println(laps[i]);
-
-        // Hiển thị số lap trên LCD
-        getLCD()->clear();
-        getLCD()->setCursor(0, 0);
-        getLCD()->print("Lap ");
-        getLCD()->print(i + 1);
-        getLCD()->print(" of ");
-        getLCD()->print(lapCount);
-
-        unsigned long start = millis();
-        while (millis() - start < 2000)
-        {
-            displayLapValue(lc, laps[i]);
-            displayLCD_LapValue(laps[i]);
-            delay(1000);
-        }
-        lc->clearDisplay(0);
-    }
-
-    // Reset after showing
-    for (int i = 0; i < 5; ++i)
-        laps[i] = 0;
-    lapCount = 0;
-    timerCurrentTime = 0;
-    timerStartTime = 0;
-    isTimerRunning = false;
-
-    getLCD()->clear();
+    // Cập nhật header LCD
     getLCD()->setCursor(0, 0);
-    getLCD()->print("Laps cleared");
-    delay(1000);
+    getLCD()->print("Lap ");
+    getLCD()->print(s_lapIndex + 1);
+    getLCD()->print(" of ");
+    getLCD()->print(lapCount);
+    getLCD()->print("   ");
 
-    Serial.println("Laps cleared after show");
+    // Tiến sang lap tiếp theo sau 2 giây
+    if (millis() - s_lapShowTime >= 2000)
+    {
+        Serial.printf("[LAP] Lap %d shown\n", s_lapIndex + 1);
+        s_lapIndex++;
+        s_lapShowTime = millis();
+    }
 }
 
 // ============================================================================
@@ -151,20 +154,13 @@ void displayAlarm(RTC_DS3231 *rtc, LedControl *lc)
 {
     DateTime now = rtc->now();
 
-    if (!alarmTriggered && now.hour() == alarmHour &&
-        now.minute() == alarmMinute && now.second() == 0)
-    {
-        alarmTriggered = true;
-        Serial.println("Alarm triggered!");
-        digitalWrite(BUZZER_PIN, HIGH); // Bật buzzer khi báo thức
-        digitalWrite(LED_PIN, HIGH);    // Bật LED báo hiệu
-    }
-
+    // Hiển thị giờ hiện tại (4 digit trái)
     lc->setDigit(0, 7, now.hour() / 10, false);
     lc->setDigit(0, 6, now.hour() % 10, true);
     lc->setDigit(0, 5, now.minute() / 10, false);
     lc->setDigit(0, 4, now.minute() % 10, false);
 
+    // Hiển thị giờ báo thức (4 digit phải)
     lc->setDigit(0, 3, alarmHour / 10, false);
     lc->setDigit(0, 2, alarmHour % 10, true);
     lc->setDigit(0, 1, alarmMinute / 10, false);
