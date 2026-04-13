@@ -11,7 +11,6 @@
 **Multi-functional Smart Clock System with ESP32**
 
 <br/>
-
 ![Smart Clock System](Report/Smart%20Time%20Clock.jpg)
 
 *Real-time scheduling · Dual displays · NTP sync · Environmental monitoring · Web Dashboard*
